@@ -5,7 +5,8 @@ from rich.live import Live
 from rich.table import Table
 import time
 import argparse
-
+import ipaddress
+import socket
 
 hosts = [
     "1.1.1.1",
@@ -15,34 +16,31 @@ hosts = [
     "canireachthe.net",
     "208.67.220.220",
     "208.67.222.222",
+    "153.106.4.1"
 ]
 
 results = {}
 
+def is_ip_address(ip):
+   try:
+       ip_object = ipaddress.ip_address(ip)
+       return True
+   except ValueError:
+       return False
 
 def ping_host(host, ping_timeout):
-    if host not in results:
-        results[host] = {}
     result = ping(host, count=1, privileged=False, timeout=ping_timeout)
     results[host]["is_alive"] = result.is_alive
-    if "history" not in results[host]:
-        results[host]["history"] = []
     if result.is_alive:
         results[host]["history"].append(":white_check_mark:")
     else:
         results[host]["history"].append(":x:")
-    if "packets_sent" not in results[host]:
-        results[host]["packets_sent"] = 0
     results[host]["packets_sent"] += result.packets_sent
-    if "packets_received" not in results[host]:
-        results[host]["packets_received"] = 0
     results[host]["packets_received"] += result.packets_received
     results[host]["packet_loss"] = (
         (results[host]["packets_sent"] - results[host]["packets_received"])
         / results[host]["packets_sent"]
     ) * 100
-    if "rtts" not in results[host]:
-        results[host]["rtts"] = []
     results[host]["rtts"].append(result.avg_rtt)
     # avg = sum(number_list)/len(number_list)
     results[host]["last_rtt"] = result.avg_rtt
@@ -56,7 +54,8 @@ def generate_table(ping_timeout) -> Table:
     # Make the table
     table = Table()
     table.add_column("Alive")
-    table.add_column("Host")
+    table.add_column("IP Addr")
+    table.add_column("Hostname")
     table.add_column("Last 10")
     table.add_column("Loss")
     table.add_column("Received")
@@ -69,7 +68,8 @@ def generate_table(ping_timeout) -> Table:
         ping_host(host, ping_timeout)
         table.add_row(
             f"[green]UP" if results[host]["is_alive"] else "[red]DOWN",
-            f"{host}",
+            f"{results[host]['ip_address']}",
+            f"{results[host]['hostname']}",
             # history = ()
             f"{''.join(results[host]['history'][-10:])}",
             # result = ''.join(str(item) for item in list_of_integers)
@@ -81,6 +81,21 @@ def generate_table(ping_timeout) -> Table:
         )
     return table
 
+def setup():
+    for host in hosts:
+        results[host] = {}
+        if is_ip_address(host):
+            results[host]['ip_address'] = host
+            hostname = socket.gethostbyaddr(host)
+            results[host]['hostname'] = hostname[0]
+        else:
+            results[host]['hostname'] = host
+            ip_address = socket.gethostbyname(host)
+            results[host]['ip_address'] = ip_address
+        results[host]["history"] = []
+        results[host]["packets_sent"] = 0
+        results[host]["packets_received"] = 0
+        results[host]["rtts"] = []
 
 def main(args):
     with Live(generate_table(args.timeout), refresh_per_second=2) as live:
@@ -98,4 +113,5 @@ if __name__ == "__main__":
         "-t", "--timeout", type=int, default=2, help="ping timeout", metavar="i"
     )
     args = parser.parse_args()
+    setup()
     main(args)

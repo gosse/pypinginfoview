@@ -5,7 +5,8 @@ This is a rough, hacked together version that has pretty poor performance - but 
 
 TODO: 
 - text file input 
-- better data structure (SQLite)?
 - async ping
 - host - description format 
-- set ping interval via cli
+- better data structure (SQLite)?
+- ~~IP/DNS lookup~~
+- ~~set ping interval via cli~~
