@@ -15,7 +15,7 @@ def is_ip_address(ip):
     except ValueError:
         return False
 
-
+# Ping the host and update the results dict with result
 def ping_host(host, results, ping_timeout):
     result = ping(host, count=1, privileged=False, timeout=ping_timeout)
     results[host]["is_alive"] = result.is_alive
@@ -30,12 +30,10 @@ def ping_host(host, results, ping_timeout):
         / results[host]["packets_sent"]
     )
     results[host]["rtts"].append(result.avg_rtt)
-    # avg = sum(number_list)/len(number_list)
     results[host]["last_rtt"] = result.avg_rtt
     results[host]["average_rtt"] = sum(results[host]["rtts"]) / len(
         results[host]["rtts"]
     )
-    # print(results)
     return results
 
 
