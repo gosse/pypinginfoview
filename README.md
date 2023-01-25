@@ -7,3 +7,5 @@ TODO:
 - text file input 
 - better data structure (SQLite)?
 - async ping
+- host - description format 
+- set ping interval via cli
