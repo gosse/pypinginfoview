@@ -4,7 +4,7 @@ A console-based python ping tool, inspired by NirSoft [PingInfoView](https://www
 This is a rough, hacked together version that has pretty poor performance - but gets the job done. 
 
 
-[![asciicast](https://asciinema.org/connect/e551105e-b2f5-42a0-8b71-1e8e54358aa2.png)](https://asciinema.org/connect/e551105e-b2f5-42a0-8b71-1e8e54358aa2)
+[![asciicast](https://asciinema.org/a/b7nripGh11oJAjH8g5tPuWuVW.png)](https://asciinema.org/a/b7nripGh11oJAjH8g5tPuWuVW)
 
 TODO: 
 - async ping
