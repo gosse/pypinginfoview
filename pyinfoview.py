@@ -28,7 +28,7 @@ def ping_host(host, results, ping_timeout):
     results[host]["packet_loss"] = (
         (results[host]["packets_sent"] - results[host]["packets_received"])
         / results[host]["packets_sent"]
-    ) * 100
+    )
     results[host]["rtts"].append(result.avg_rtt)
     # avg = sum(number_list)/len(number_list)
     results[host]["last_rtt"] = result.avg_rtt
@@ -62,7 +62,7 @@ def generate_table(hosts, results, ping_timeout) -> Table:
             # history = ()
             f"{''.join(results[host]['history'][-10:])}",
             # result = ''.join(str(item) for item in list_of_integers)
-            f"{results[host]['packet_loss']}%",
+            f"{results[host]['packet_loss'] * 100}%",
             f"{results[host]['packets_received']}",
             f"{results[host]['packets_sent']}",
             f"{round(results[host]['last_rtt'], 2)}",
@@ -113,7 +113,6 @@ def main(args):
             "canireachthe.net",
             "208.67.220.220",
             "208.67.222.222",
-            "153.106.4.1",
         ]
     results = setup(hosts)
     with Live(generate_table(hosts, results, args.timeout), refresh_per_second=2) as live:
