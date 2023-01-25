@@ -8,27 +8,15 @@ import argparse
 import ipaddress
 import socket
 
-hosts = [
-    "1.1.1.1",
-    "1.0.0.1",
-    "8.8.8.8",
-    "8.8.4.4",
-    "canireachthe.net",
-    "208.67.220.220",
-    "208.67.222.222",
-    "153.106.4.1"
-]
-
-results = {}
-
 def is_ip_address(ip):
-   try:
-       ip_object = ipaddress.ip_address(ip)
-       return True
-   except ValueError:
-       return False
+    try:
+        ip_object = ipaddress.ip_address(ip)
+        return True
+    except ValueError:
+        return False
 
-def ping_host(host, ping_timeout):
+
+def ping_host(host, results, ping_timeout):
     result = ping(host, count=1, privileged=False, timeout=ping_timeout)
     results[host]["is_alive"] = result.is_alive
     if result.is_alive:
@@ -48,9 +36,10 @@ def ping_host(host, ping_timeout):
         results[host]["rtts"]
     )
     # print(results)
+    return results
 
 
-def generate_table(ping_timeout) -> Table:
+def generate_table(hosts, results, ping_timeout) -> Table:
     # Make the table
     table = Table()
     table.add_column("Alive")
@@ -65,7 +54,7 @@ def generate_table(ping_timeout) -> Table:
 
     # Working loop through the host list
     for host in hosts:
-        ping_host(host, ping_timeout)
+        results = ping_host(host, results, ping_timeout)
         table.add_row(
             f"[green]UP" if results[host]["is_alive"] else "[red]DOWN",
             f"{results[host]['ip_address']}",
@@ -81,27 +70,56 @@ def generate_table(ping_timeout) -> Table:
         )
     return table
 
-def setup():
+
+def setup(hosts):
+    results = {}
     for host in hosts:
         results[host] = {}
-        if is_ip_address(host):
-            results[host]['ip_address'] = host
-            hostname = socket.gethostbyaddr(host)
-            results[host]['hostname'] = hostname[0]
-        else:
-            results[host]['hostname'] = host
-            ip_address = socket.gethostbyname(host)
-            results[host]['ip_address'] = ip_address
+        try:
+            if is_ip_address(host):
+                results[host]["ip_address"] = host
+                hostname = socket.gethostbyaddr(host)
+                results[host]["hostname"] = hostname[0]
+            else:
+                results[host]["hostname"] = host
+                ip_address = socket.gethostbyname(host)
+                results[host]["ip_address"] = ip_address
+        except Exception as e:
+            # If the name/IP resolution doesn't work, set both as whatever input is given
+            results[host]["ip_address"] = host
+            results[host]["hostname"] = host
         results[host]["history"] = []
         results[host]["packets_sent"] = 0
         results[host]["packets_received"] = 0
         results[host]["rtts"] = []
+    return results
+
+
+def process_hosts(file):
+    with open(file, "r") as f:
+        hosts = f.read().splitlines()
+    return hosts
+
 
 def main(args):
-    with Live(generate_table(args.timeout), refresh_per_second=2) as live:
+    if args.hostfile:
+        hosts = process_hosts(args.hostfile)
+    else:
+        hosts = [
+            "1.1.1.1",
+            "1.0.0.1",
+            "8.8.8.8",
+            "8.8.4.4",
+            "canireachthe.net",
+            "208.67.220.220",
+            "208.67.222.222",
+            "153.106.4.1",
+        ]
+    results = setup(hosts)
+    with Live(generate_table(hosts, results, args.timeout), refresh_per_second=2) as live:
         while True:
             time.sleep(args.interval)
-            live.update(generate_table(args.timeout))
+            live.update(generate_table(hosts, results, args.timeout))
 
 
 if __name__ == "__main__":
@@ -110,8 +128,14 @@ if __name__ == "__main__":
         "-i", "--interval", type=int, default=1, help="ping interval", metavar="i"
     )
     parser.add_argument(
-        "-t", "--timeout", type=int, default=2, help="ping timeout", metavar="i"
+        "-t", "--timeout", type=int, default=2, help="ping timeout", metavar="t"
+    )
+    parser.add_argument(
+        "-f",
+        "--hostfile",
+        type=str,
+        help="file of hosts, one line per host",
+        metavar="h",
     )
     args = parser.parse_args()
-    setup()
     main(args)

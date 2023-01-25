@@ -4,9 +4,9 @@ A console-based python ping tool, inspired by NirSoft [PingInfoView](https://www
 This is a rough, hacked together version that has pretty poor performance - but gets the job done. 
 
 TODO: 
-- text file input 
 - async ping
 - host - description format 
 - better data structure (SQLite)?
+- ~~text file input~~
 - ~~IP/DNS lookup~~
 - ~~set ping interval via cli~~
