@@ -8,12 +8,14 @@ import argparse
 import ipaddress
 import socket
 
+
 def is_ip_address(ip):
     try:
         ip_object = ipaddress.ip_address(ip)
         return True
     except ValueError:
         return False
+
 
 # Ping the host and update the results dict with result
 def ping_host(host, results, ping_timeout):
@@ -26,9 +28,8 @@ def ping_host(host, results, ping_timeout):
     results[host]["packets_sent"] += result.packets_sent
     results[host]["packets_received"] += result.packets_received
     results[host]["packet_loss"] = (
-        (results[host]["packets_sent"] - results[host]["packets_received"])
-        / results[host]["packets_sent"]
-    )
+        results[host]["packets_sent"] - results[host]["packets_received"]
+    ) / results[host]["packets_sent"]
     results[host]["rtts"].append(result.avg_rtt)
     results[host]["last_rtt"] = result.avg_rtt
     results[host]["average_rtt"] = sum(results[host]["rtts"]) / len(
@@ -113,10 +114,16 @@ def main(args):
             "208.67.222.222",
         ]
     results = setup(hosts)
-    with Live(generate_table(hosts, results, args.timeout), refresh_per_second=2) as live:
+    with Live(
+        generate_table(hosts, results, args.timeout), refresh_per_second=2
+    ) as live:
+        i = 0
         while True:
+            i += 1
             time.sleep(args.interval)
             live.update(generate_table(hosts, results, args.timeout))
+            if args.number > 0 and i > args.number:
+                exit()
 
 
 if __name__ == "__main__":
@@ -126,6 +133,14 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "-t", "--timeout", type=int, default=2, help="ping timeout", metavar="t"
+    )
+    parser.add_argument(
+        "-n",
+        "--number",
+        type=int,
+        default=0,
+        help="number of pings, 0 means unlimited",
+        metavar="t",
     )
     parser.add_argument(
         "-f",
