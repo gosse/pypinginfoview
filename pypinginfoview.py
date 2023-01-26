@@ -19,22 +19,31 @@ def is_ip_address(ip):
 
 # Ping the host and update the results dict with result
 def ping_host(host, results, ping_timeout):
-    result = ping(host, count=1, privileged=False, timeout=ping_timeout)
-    results[host]["is_alive"] = result.is_alive
-    if result.is_alive:
-        results[host]["history"].append(":white_check_mark:")
-    else:
+    try:
+        result = ping(host, count=1, timeout=ping_timeout, privileged=False)
+        results[host]["is_alive"] = result.is_alive
+        if result.is_alive:
+            results[host]["history"].append(":white_check_mark:")
+        else:
+            results[host]["history"].append(":x:")
+        results[host]["packets_sent"] += result.packets_sent
+        results[host]["packets_received"] += result.packets_received
+        results[host]["packet_loss"] = (
+            results[host]["packets_sent"] - results[host]["packets_received"]
+        ) / results[host]["packets_sent"]
+        results[host]["rtts"].append(result.avg_rtt)
+        results[host]["last_rtt"] = result.avg_rtt
+        results[host]["average_rtt"] = sum(results[host]["rtts"]) / len(
+            results[host]["rtts"]
+        )
+    except:
+        results[host]["is_alive"] = False
         results[host]["history"].append(":x:")
-    results[host]["packets_sent"] += result.packets_sent
-    results[host]["packets_received"] += result.packets_received
-    results[host]["packet_loss"] = (
-        results[host]["packets_sent"] - results[host]["packets_received"]
-    ) / results[host]["packets_sent"]
-    results[host]["rtts"].append(result.avg_rtt)
-    results[host]["last_rtt"] = result.avg_rtt
-    results[host]["average_rtt"] = sum(results[host]["rtts"]) / len(
-        results[host]["rtts"]
-    )
+        results[host]["packets_sent"] += 1
+        results[host]["packets_received"] += 0
+        results[host]["packet_loss"] = 1
+        results[host]["last_rtt"] = 0
+        results[host]["average_rtt"] = 0
     return results
 
 
@@ -72,25 +81,33 @@ def generate_table(hosts, results, ping_timeout) -> Table:
 
 def setup(hosts):
     results = {}
+    print("Building host list", end="")
     for host in hosts:
         results[host] = {}
-        try:
-            if is_ip_address(host):
-                results[host]["ip_address"] = host
-                hostname = socket.gethostbyaddr(host)
-                results[host]["hostname"] = hostname[0]
-            else:
-                results[host]["hostname"] = host
-                ip_address = socket.gethostbyname(host)
-                results[host]["ip_address"] = ip_address
-        except Exception as e:
-            # If the name/IP resolution doesn't work, set both as whatever input is given
-            results[host]["ip_address"] = host
-            results[host]["hostname"] = host
+        print(".", end="")
+        # prepopulate some fields
         results[host]["history"] = []
         results[host]["packets_sent"] = 0
         results[host]["packets_received"] = 0
         results[host]["rtts"] = []
+        if is_ip_address(host):
+            try:
+                results[host]["ip_address"] = host
+                hostname = socket.gethostbyaddr(host)
+                results[host]["hostname"] = hostname[0]
+            except:
+                # if reverse dns fails, just set it the same
+                results[host]["ip_address"] = host
+        else:
+            try:
+                results[host]["hostname"] = host
+                ip_address = socket.gethostbyname(host)
+                results[host]["ip_address"] = ip_address
+            except Exception as e:
+                # If name resolution does not work, remove it from the list
+                print("Could not resolve", host, "skipping...")
+                results.pop(host)
+    print("\n")
     return results
 
 
