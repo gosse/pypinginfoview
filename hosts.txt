@@ -6,3 +6,8 @@
 canireachthe.net
 127.0.0.1
 yahoo.com
+google.com
+bbc.com
+1.0.0.1
+8.8.4.4
+4.2.2.1

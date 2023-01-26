@@ -1,3 +1,6 @@
+import asyncio
+from icmplib import async_ping
+from icmplib import ping
 from icmplib import ping
 from rich.console import Console
 from rich.table import Table
@@ -7,6 +10,12 @@ import time
 import argparse
 import ipaddress
 import socket
+import asyncio
+
+
+async def async_ping_host(host, results, ping_timeout):
+    result = await async_ping(host, privileged=False, count=1, timeout=ping_timeout)
+    update_results(host, result, results)
 
 
 def is_ip_address(ip):
@@ -17,9 +26,7 @@ def is_ip_address(ip):
         return False
 
 
-# Ping the host and update the results dict with result
-def ping_host(host, results, ping_timeout):
-    result = ping(host, count=1, privileged=False, timeout=ping_timeout)
+def update_results(host, result, results):
     results[host]["is_alive"] = result.is_alive
     if result.is_alive:
         results[host]["history"].append(":white_check_mark:")
@@ -38,6 +45,12 @@ def ping_host(host, results, ping_timeout):
     return results
 
 
+# Ping the host and update the results dict with result
+def ping_host(host, results, ping_timeout):
+    result = ping(host, count=1, privileged=False, timeout=ping_timeout)
+    results = update_results(host, result, results)
+
+
 def generate_table(hosts, results, ping_timeout) -> Table:
     # Make the table
     table = Table()
@@ -53,7 +66,6 @@ def generate_table(hosts, results, ping_timeout) -> Table:
 
     # Working loop through the host list
     for host in hosts:
-        results = ping_host(host, results, ping_timeout)
         table.add_row(
             f"[green]UP" if results[host]["is_alive"] else "[red]DOWN",
             f"{results[host]['ip_address']}",
@@ -74,6 +86,7 @@ def setup(hosts):
     results = {}
     for host in hosts:
         results[host] = {}
+        results[host]["is_alive"] = False
         try:
             if is_ip_address(host):
                 results[host]["ip_address"] = host
@@ -90,7 +103,10 @@ def setup(hosts):
         results[host]["history"] = []
         results[host]["packets_sent"] = 0
         results[host]["packets_received"] = 0
+        results[host]["packet_loss"] = 0
         results[host]["rtts"] = []
+        results[host]["last_rtt"] = 0
+        results[host]["average_rtt"] = 0
     return results
 
 
@@ -100,7 +116,7 @@ def process_hosts(file):
     return hosts
 
 
-def main(args):
+async def main(args):
     if args.hostfile:
         hosts = process_hosts(args.hostfile)
     else:
@@ -117,9 +133,16 @@ def main(args):
     with Live(
         generate_table(hosts, results, args.timeout), refresh_per_second=2
     ) as live:
+        i = 0
         while True:
+            i += 1
             time.sleep(args.interval)
+            #         results = ping_host(host, results, ping_timeout)
+            for host in hosts:
+                await asyncio.gather(async_ping_host(host, results, args.timeout))
             live.update(generate_table(hosts, results, args.timeout))
+            if args.number > 0 and i > args.number:
+                exit()
 
 
 if __name__ == "__main__":
@@ -130,4 +153,5 @@ if __name__ == "__main__":
         "-f", "--hostfile", type=str, help="file of hosts, one line per host"
     )
     args = parser.parse_args()
-    main(args)
+    # main(args)
+    asyncio.run(main(args))
