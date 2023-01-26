@@ -47,7 +47,7 @@ def ping_host(host, results, ping_timeout):
     return results
 
 
-def generate_table(hosts, results, ping_timeout) -> Table:
+def generate_table(results, ping_timeout) -> Table:
     # Make the table
     table = Table()
     table.add_column("Alive")
@@ -55,13 +55,13 @@ def generate_table(hosts, results, ping_timeout) -> Table:
     table.add_column("Hostname")
     table.add_column("Last 10")
     table.add_column("Loss")
-    table.add_column("Received")
-    table.add_column("Sent")
+    table.add_column("Rx")
+    table.add_column("Tx")
     table.add_column("Last RTT")
     table.add_column("Mean RTT")
 
     # Working loop through the host list
-    for host in hosts:
+    for host in results:
         results = ping_host(host, results, ping_timeout)
         table.add_row(
             f"[green]UP" if results[host]["is_alive"] else "[red]DOWN",
@@ -70,7 +70,7 @@ def generate_table(hosts, results, ping_timeout) -> Table:
             # history = ()
             f"{''.join(results[host]['history'][-10:])}",
             # result = ''.join(str(item) for item in list_of_integers)
-            f"{results[host]['packet_loss'] * 100}%",
+            f"{round(results[host]['packet_loss'] * 100, 2)}%",
             f"{results[host]['packets_received']}",
             f"{results[host]['packets_sent']}",
             f"{round(results[host]['last_rtt'], 2)}",
@@ -105,7 +105,7 @@ def setup(hosts):
                 results[host]["ip_address"] = ip_address
             except Exception as e:
                 # If name resolution does not work, remove it from the list
-                print("Could not resolve", host, "skipping...")
+                print("Could not resolve", host, "skipping...", end="")
                 results.pop(host)
     print("\n")
     return results
@@ -129,14 +129,15 @@ def main(args):
             "canireachthe.net",
             "208.67.220.220",
             "208.67.222.222",
+            "test.example.com"
         ]
     results = setup(hosts)
     with Live(
-        generate_table(hosts, results, args.timeout), refresh_per_second=2
+        generate_table(results, args.timeout), refresh_per_second=2
     ) as live:
         while True:
             time.sleep(args.interval)
-            live.update(generate_table(hosts, results, args.timeout))
+            live.update(generate_table(results, args.timeout))
 
 
 if __name__ == "__main__":
